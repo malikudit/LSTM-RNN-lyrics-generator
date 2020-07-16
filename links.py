@@ -1,7 +1,7 @@
 from bs4 import BeautifulSoup
 import re
 import urllib.request
-import songs
+import songlist
 
 artist = songs.artist
 
