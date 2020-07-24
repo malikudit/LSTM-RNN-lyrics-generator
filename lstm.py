@@ -1,84 +1,77 @@
 import numpy as np
-import os
-import sys
-from keras.models import Sequential
-from keras.layers import Dense
-from keras.layers import Dropout
-from keras.layers import LSTM
-from keras.callbacks import ModelCheckpoint
-from keras.utils import np_utils
+import pandas as pd
+import tensorflow as tf
+import matplotlib.pyplot as plt
+from tensorflow.keras.preprocessing.text import Tokenizer
+from tensorflow.keras.preprocessing.sequence import pad_sequences
+from tensorflow.keras.utils import to_categorical
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Embedding
+from tensorflow.keras.layers import LSTM
+from tensorflow.keras.layers import Dense
+from tensorflow.keras.layers import Bidirectional
+import string
 
-file = open("data/lyrics.txt", "r", encoding="ISO-8859-1")
-text = file.read()
-text = text.lower()
-file.close()
+text = pd.read_csv("data/lyrics.csv", dtype=str)[:250]
 
-chars = sorted(list(set(text)))
-char_to_n = dict((c, i) for i, c in enumerate(chars)) 
-n_to_char = dict((i, c) for i, c in enumerate(chars)) 
+def tokenize_corpus(corpus):
+    tokenizer = Tokenizer()
+    tokenizer.fit_on_texts(corpus)
+    return tokenizer
 
-vocab_size = len(chars)
-data_size = len(text)
-seq_length = 100
-sentences = []
-next_char = []  
+def lyrics_corpus(text, column):
+    text[column] = text[column].str.replace('[{}]'.format(string.punctuation), '')
+    text[column] = text[column].str.lower()
+    lyrics = text[column].str.cat()
+    corpus = lyrics.split('\n')
+    for item in range(len(corpus)):
+        corpus[item] = corpus[item].rstrip()
+    corpus = [item for item in corpus if item != '']
+    return corpus
 
-for i in range(0, data_size-seq_length, 1):
-    in_seq = text[i:i + seq_length]
-    out_seq = text[i + seq_length]
-    sentences.append([char_to_n[char] for char in in_seq])
-    next_char.append(char_to_n[out_seq])
-pattern_size = len(sentences)
+corpus = lyrics_corpus(text, 'Column1')
+tokenizer = tokenize_corpus(corpus)
+vocab_size = len(tokenizer.word_index)+1
 
-X = np.reshape(sentences, (pattern_size, seq_length, 1))
-X = X/float(vocab_size)
-Y = np_utils.to_categorical(next_char)
+seq = []
+for item in corpus:
+    seq_list = tokenizer.texts_to_sequences([item])[0]
+    for i in range(1, len(seq_list)):
+        n_gram = seq_list[:i+1]
+        seq.append(n_gram)
+        
+max_seq_size = max([len(s) for s in seq])
+seq = np.array(pad_sequences(seq, maxlen=max_seq_size, padding='pre'))
 
-def generate_checkpoint():
-    model = Sequential()
-    model.add(LSTM(256, input_shape=(X.shape[1], X.shape[2]), return_sequences=True))
-    model.add(Dropout(0.2))
-    model.add(LSTM(256))
-    model.add(Dropout(0.2))
-    model.add(Dense(Y.shape[1], activation='softmax'))
-    model.compile(loss='categorical_crossentropy', optimizer='adam')
-    filepath="weights-improvement-{epoch:02d}-{loss:.4f}.hdf5"
-    checkpoint = ModelCheckpoint(filepath, monitor='loss', verbose=1, save_best_only=True, mode='min')
-    callbacks_list = [checkpoint]
-    model.fit(X, Y, epochs=50, batch_size=64, callbacks=callbacks_list)
+input_sequences, labels = seq[:,:-1], seq[:,-1]
+one_hot_labels = to_categorical(labels, num_classes=vocab_size)
 
-# uncomment the line below to generate the hdf5 file containing the weights from the trained network
-generate_checkpoint()
+model = Sequential()
+model.add(Embedding(vocab_size, 64, input_length=max_seq_size-1))
+model.add(Bidirectional(LSTM(20)))
+model.add(Dense(vocab_size, activation='softmax'))
+model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+history = model.fit(input_sequences, one_hot_labels, epochs=100, verbose=1)
 
-def generate_text():
-    model = Sequential()
-    model.add(LSTM(256, input_shape=(X.shape[1], X.shape[2]), return_sequences=True))
-    model.add(Dropout(0.2))
-    model.add(LSTM(256))
-    model.add(Dropout(0.2))
-    model.add(Dense(Y.shape[1], activation='softmax'))
-    filename = "weights-improvement-20-1.8533.hdf5"
-    model.load_weights(filename)
-    model.compile(loss='categorical_crossentropy', optimizer='adam')
-    start = np.random.randint(0, len(sentences)-1)
-    pattern = sentences[start]
-    print("Seed:")
-    print("\"", ''.join([n_to_char[value] for value in pattern]), "\"")
-    for i in range(1000):
-        X2 = np.reshape(pattern, (1, len(pattern), 1))
-        X2 = X2/float(vocab_size)
-        prediction = model.predict(X2, verbose=0)
-        index = np.argmax(prediction)
-        result = n_to_char[index]
-        seq_in = [n_to_char[value] for value in pattern]
-        sys.stdout.write(result)
-        pattern.append(index)
-        pattern = pattern[1:len(pattern)]
-    print("\nDone")
+def plot_graph(history, string):
+    plt.plot(history.history[string])
+    plt.xlabel("Epochs")
+    plt.ylabel(string)
+    plt.show()
 
-generate_text()
+plot_graph(history, 'accuracy')
 
-
-
-
-	
+seed = "im trying hard"
+next_words = 100
+for _ in range(next_words):
+    token_list = tokenizer.texts_to_sequences([seed])[0]
+    token_list = pad_sequences([token_list], maxlen=max_seq_size-1, padding='pre')
+    predicted_probs = model.predict(token_list)[0]
+    predicted = np.random.choice([x for x in range(len(predicted_probs))], p=predicted_probs)
+    output = ""
+    for word, index in tokenizer.word_index.items():
+        if index == predicted:
+            output = word
+            break
+    seed += " " + output
+print(seed)
