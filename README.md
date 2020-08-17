@@ -16,3 +16,14 @@ Once you have the lowest loss file, change:
 filename = "FILENAME.hdf5"
 ```
 to load the weights and run the text generation function.
+
+## Results
+### Trained on 50 words for 300 epochs
+![test](50words.png)
+
+Resulting text with seed "im trying hard" is quite meaningless, due to the small training data size:
+```
+im trying hard you like itis changes it like tryingi pissed childrentrying dont in to realize his in game now want lied cant for im you stayinghere think just for cant cause just tiredis itdont are way way disagree behind stayinghere hill see story dont wantedwhen even theyd give them you farwe beginthis here just it now see like wantedwhen im just this just disagreeif
+```
+
+
