@@ -3,9 +3,9 @@ bs4==0.0.1
 Keras==2.4.3
 Keras-Preprocessing==1.1.2
 nltk==3.6.5
-numpy==1.18.5
+numpy==1.22.0
 requests==2.23.0
 tensorboard==2.2.2
 tensorboard-plugin-wit==1.7.0
-tensorflow==2.5.2
+tensorflow==2.9.3
 tensorflow-estimator==2.2.0
