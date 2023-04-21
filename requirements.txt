@@ -2,7 +2,7 @@ beautifulsoup4==4.6.0
 bs4==0.0.1
 Keras==2.4.3
 Keras-Preprocessing==1.1.2
-nltk==3.6.5
+nltk==3.6.6
 numpy==1.22.0
 requests==2.23.0
 tensorboard==2.2.2
