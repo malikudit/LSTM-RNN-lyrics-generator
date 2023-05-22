@@ -4,7 +4,7 @@ Keras==2.4.3
 Keras-Preprocessing==1.1.2
 nltk==3.6.5
 numpy==1.22.0
-requests==2.23.0
+requests==2.31.0
 tensorboard==2.2.2
 tensorboard-plugin-wit==1.7.0
 tensorflow==2.11.1
